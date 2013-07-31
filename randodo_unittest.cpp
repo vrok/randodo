@@ -37,7 +37,7 @@ public:
 class FakeRandomNumberGenerator
 {
 private:
-    int _current;
+    int _current = 0;
 public:
     int get()
     {
@@ -45,7 +45,7 @@ public:
     }
 };
 
-TEST(ConfigFile, TestBasicFileParsing)
+TEST(ConfigFile, TestRegexConst)
 {
     Randodo::ConfigFile<FakeFileReader> configFile;
     std::string regex = "abcdef";
@@ -57,7 +57,7 @@ TEST(ConfigFile, TestBasicFileParsing)
     ASSERT_EQ("abcdef", stream.str());
 }
 
-TEST(ConfigFile, TestBasicFileParsing2)
+TEST(ConfigFile, TestRegexTwoCharAlternatives)
 {
     Randodo::ConfigFile<FakeFileReader> configFile;
     std::string regex = "abc[def][ghi]";
@@ -69,6 +69,55 @@ TEST(ConfigFile, TestBasicFileParsing2)
 
     ASSERT_EQ("abcdg", str1.str());
     ASSERT_EQ("abceh", str2.str());
+}
+
+
+TEST(ConfigFile, TestRegexOneConstAlternative)
+{
+    Randodo::ConfigFile<FakeFileReader> configFile;
+    std::string regex = "abc|def";
+    std::unique_ptr<Randodo::Generator> gen = configFile.parseRegex(regex);
+    std::stringstream str1, str2;
+
+    gen->generate(str1);
+    gen->generate(str2);
+
+    ASSERT_EQ("abc", str1.str());
+    ASSERT_EQ("def", str2.str());
+}
+
+
+TEST(ConfigFile, TestRegexEmbeddedConstAlternative)
+{
+    Randodo::ConfigFile<FakeFileReader> configFile;
+    std::string regex = "abc(def|ghi)jkl";
+    std::unique_ptr<Randodo::Generator> gen = configFile.parseRegex(regex);
+    std::stringstream str1, str2;
+
+    gen->generate(str1);
+    gen->generate(str2);
+
+    ASSERT_EQ("abcdefjkl", str1.str());
+    ASSERT_EQ("abcghijkl", str2.str());
+}
+
+
+TEST(ConfigFile, TestRegexAlternative)
+{
+    Randodo::ConfigFile<FakeFileReader> configFile;
+    std::string regex = "abc(def|[ghi])jkl";
+    std::unique_ptr<Randodo::Generator> gen = configFile.parseRegex(regex);
+    std::stringstream str1, str2, str3, str4;
+
+    gen->generate(str1);
+    gen->generate(str2);
+    gen->generate(str3);
+    gen->generate(str4);
+
+    ASSERT_EQ("abcdefjkl", str1.str());
+    ASSERT_EQ("abcgjkl", str2.str());
+    ASSERT_EQ("abcdefjkl", str3.str());
+    ASSERT_EQ("abchjkl", str4.str());
 }
 
 TEST(ConfigFile, TestConstant)

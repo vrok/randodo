@@ -9,6 +9,7 @@
 #include <memory>
 #include <stack>
 #include <algorithm>
+#include <cassert>
 
 namespace Randodo
 {
@@ -35,6 +36,10 @@ class Generator
 public:
     virtual void generate(std::stringstream &output) = 0;
 
+    virtual bool isEmpty() = 0;
+
+    virtual void optimize() = 0;
+
     virtual ~Generator() {}
 };
 
@@ -50,6 +55,13 @@ public:
     {
         output << _value;
     }
+
+    bool isEmpty()
+    {
+        return _value.size() == 0;
+    }
+
+    void optimize() {}
 };
 
 template<typename RandNumGenerator>
@@ -59,13 +71,19 @@ private:
     std::string _possibleChars;
     RandNumGenerator _randNumGenerator;
 public:
-    CharAlternativeGenerator(const std::string &possibleChars)
-        : _possibleChars(possibleChars) {}
+    CharAlternativeGenerator(const std::string &possibleChars) : _possibleChars(possibleChars) {}
 
     void generate(std::stringstream &output)
     {
         output << _possibleChars[_randNumGenerator.get() % _possibleChars.size()];
     }
+
+    bool isEmpty()
+    {
+        return _possibleChars.size() == 0;
+    }
+
+    void optimize() {}
 };
 
 class SeriesOfGeneratorsGenerator : public Generator
@@ -84,12 +102,61 @@ public:
             generator->generate(output);
         }
     }
+
+    bool isEmpty()
+    {
+        return _generators.size() == 0;
+    }
+
+    void optimize()
+    {
+        for (auto &gen : _generators) {
+            gen->optimize();
+        }
+
+        auto emptyBegin = std::stable_partition(_generators.begin(), _generators.end(), [](std::unique_ptr<Generator> &gen) {
+            return !gen->isEmpty();
+        });
+
+        _generators.erase(emptyBegin, _generators.end()); 
+    }
+};
+
+template<typename RandNumGenerator>
+class AlternativeOfGeneratorsGenerator : public Generator
+{
+private:
+    std::vector<std::unique_ptr<Generator>> _generators;
+    RandNumGenerator _randNumGenerator;
+public:
+    //AlternativeOfGeneratorsGenerator(std::vector<std::unique_ptr<Generator>> &&generators)
+    //    : _generators(generators) {}
+
+    void swapContents(std::vector<std::unique_ptr<Generator>> &generators)
+    {
+        _generators.swap(generators);
+    }
+
+    void generate(std::stringstream &output)
+    {
+        _generators[_randNumGenerator.get() % _generators.size()]->generate(output);
+    }
+
+    bool isEmpty()
+    {
+        return _generators.size() == 0;
+    }
+
+    void optimize()
+    {
+        // TODO
+    }
 };
 
 class PlainRandomNumberGenerator
 {
 private:
-    int _current;
+    int _current = 0;
 public:
     int get()
     {
@@ -106,6 +173,7 @@ class ConfigFile
 public:
 
     typedef CharAlternativeGenerator<RandNumGenerator> CharAlternativeGenerator_;
+    typedef AlternativeOfGeneratorsGenerator<RandNumGenerator> AlternativeOfGeneratorsGenerator_;
 
     bool parse(std::string fileName)
     {
@@ -134,79 +202,145 @@ public:
         return _lines;
     }
 
-    std::unique_ptr<Generator> parseRegex(const std::string &regex)
-    {
+
+    class RegexParser {
+
         enum State {
             CLEAR,
             CHAR_ALTERNATIVE, // [abc]
             //SUB_REGEX_ALTERNATIVE, // (abc|def|geh)
         };
 
-        State state = CLEAR;
-        //bool backslash = false;
-        std::stringstream stream;
+        std::stack<State> _stateStack;
+        State _state = CLEAR;
+        std::vector<std::vector<std::unique_ptr<Generator>>> _generators;
 
-        std::stack<State> stateStack;
-
-        std::function<void(State)> setState = [&stateStack, &state](State s)
+        template<typename GeneratorType>
+        void pushGenerator(std::stringstream &stream)
         {
-            stateStack.push(state);
-            state = s;
-        };
-
-        std::function<void()> restoreState = [&stateStack, &state]()
-        {
-            state = stateStack.top();
-            stateStack.pop();
-        };
-
-        std::vector<std::unique_ptr<Generator>> generators;
-
-        std::function<void(int)> processChar = [&](int character)
-        {
-            switch (state) {
-                case CLEAR:
-                    switch (character) {
-                        case '[':
-                            setState(CHAR_ALTERNATIVE);
-                        case EOL:
-
-                        if (stream.str().size() > 0) {
-                            generators.push_back(std::unique_ptr<Generator>(new ConstGenerator(stream.str())));
-                            stream.str("");
-                        }
-                        break;
-
-                        default:
-                            stream << static_cast<char>(character);
-                    }
-                    break;
-                case CHAR_ALTERNATIVE:
-                    switch (character) {
-                        case ']':
-                            restoreState();
-                        case EOL:
-                        
-                        generators.push_back(std::unique_ptr<Generator>(new CharAlternativeGenerator_(stream.str())));
-                        stream.str("");
-                        break;
-
-                        default:
-                            stream << static_cast<char>(character);    
-                    }
+            if (stream.str().size() > 0) {
+                _generators.back().push_back(std::unique_ptr<GeneratorType>(new GeneratorType(stream.str())));
+                stream.str("");
             }
-        };
-
-        std::for_each(regex.begin(), regex.end(), processChar);
-        processChar(EOL);
-
-        if (generators.size() == 1) {
-            return std::move(generators.front());
         }
 
-        auto result = std::unique_ptr<SeriesOfGeneratorsGenerator>(new SeriesOfGeneratorsGenerator);
-        result->swapContents(generators);
-        return std::move(result);
+        void setState(State s)
+        {
+            _stateStack.push(_state);
+            _state = s;
+        }
+
+        void restoreState()
+        {
+            _state = _stateStack.top();
+            _stateStack.pop();
+        }
+
+    public:
+
+        RegexParser() : _generators(2) {}
+
+        std::unique_ptr<Generator> parseRegex(const std::string &regex)
+        {
+            std::stringstream stream;
+
+            std::function<void(int)> processChar = [this, &stream](int character)
+            {
+                switch (_state) {
+                    case CLEAR:
+                        switch (character) {
+                            case '(':
+                                pushGenerator<ConstGenerator>(stream);
+                                setState(CLEAR);
+                                _generators.push_back(std::vector<std::unique_ptr<Generator>>());
+                                _generators.push_back(std::vector<std::unique_ptr<Generator>>());
+                                break;
+                            case ')':
+                                pushGenerator<ConstGenerator>(stream);
+                                assert(_generators.size() >= 3);
+
+                                {
+                                    auto seriesGen = std::unique_ptr<SeriesOfGeneratorsGenerator>(new SeriesOfGeneratorsGenerator());
+                                    seriesGen->swapContents(_generators.back());
+                                    _generators.pop_back();
+                                    _generators.back().push_back(std::move(seriesGen));
+                                }
+
+                                {
+                                    auto altGen = std::unique_ptr<AlternativeOfGeneratorsGenerator_>(new AlternativeOfGeneratorsGenerator_());
+                                    altGen->swapContents(_generators.back());
+                                    _generators.pop_back();
+                                    _generators.back().push_back(std::move(altGen));
+                                }
+                                restoreState();
+                                break;
+                            case '[':
+                                pushGenerator<ConstGenerator>(stream);
+                                setState(CHAR_ALTERNATIVE);
+                                break;
+                            case '|':
+                                pushGenerator<ConstGenerator>(stream);
+
+                                {
+                                    auto seriesGen = std::unique_ptr<SeriesOfGeneratorsGenerator>(new SeriesOfGeneratorsGenerator());
+                                    seriesGen->swapContents(_generators.back());
+                                    assert(_generators.size() >= 2);
+                                    (_generators.end() - 2)->push_back(std::move(seriesGen));
+                                }
+
+                                break;
+
+                            case EOL:
+                                pushGenerator<ConstGenerator>(stream);
+                                
+                                assert(_generators.size() == 2);
+
+                                {
+                                    auto seriesGen = std::unique_ptr<SeriesOfGeneratorsGenerator>(new SeriesOfGeneratorsGenerator());
+                                    seriesGen->swapContents(_generators.back());
+                                    _generators.pop_back();
+                                    _generators.back().push_back(std::move(seriesGen));
+                                }
+
+                                {
+                                    auto altGen = std::unique_ptr<AlternativeOfGeneratorsGenerator_>(new AlternativeOfGeneratorsGenerator_());
+                                    altGen->swapContents(_generators.back());
+                                    _generators.back().push_back(std::move(altGen));
+                                }
+
+                                break;
+
+                            default:
+                                stream << static_cast<char>(character);
+                        }
+                        break;
+                    case CHAR_ALTERNATIVE:
+                        switch (character) {
+                            case ']':
+                                restoreState();
+                            case EOL:
+                            
+                            _generators.back().push_back(std::unique_ptr<Generator>(new CharAlternativeGenerator_(stream.str())));
+                            stream.str("");
+                            break;
+
+                            default:
+                                stream << static_cast<char>(character);    
+                        }
+                }
+            };
+
+            std::for_each(regex.begin(), regex.end(), processChar);
+            processChar(EOL);
+
+            return std::move(_generators.back().back());
+        }
+    };
+
+    std::unique_ptr<Generator> parseRegex(const std::string &regex)
+    {
+        RegexParser regexParser;
+        return regexParser.parseRegex(regex);
     }
 
 private:
@@ -286,7 +420,7 @@ private:
 
         _lines.push_back(std::make_pair(name, value));
 
-        auto generator = parseRegex(value);
+        //auto generator = parseRegex(value);
 
         return true;
     }
