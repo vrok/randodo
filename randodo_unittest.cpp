@@ -1,4 +1,4 @@
-/* License: GPL v3 */
+/* License: GPL v2 */
 /* Contact author: wrochniak@gmail.com */
 
 #include "gtest/gtest.h"
