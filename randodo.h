@@ -436,12 +436,8 @@ public:
                                 case ']':
                                     restoreState();
                                 case EOL:
-                                
-                                _generators.back().push_back(std::unique_ptr<Generator>
-                                        (new CharAlternativeGenerator_(stream.str())));
-                                stream.str("");
-                                break;
-
+                                    pushGenerator<CharAlternativeGenerator_>(stream);
+                                    break;
                                 default:
                                     stream << static_cast<char>(character);    
                             }
