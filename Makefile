@@ -39,7 +39,7 @@ GTEST_HEADERS = $(GTEST_DIR)/include/gtest/*.h \
 all : $(TESTS)
 
 clean :
-	rm -f $(TESTS) gtest.a gtest_main.a *.o
+	rm -f $(TESTS) gtest.a gtest_main.a *.o randodo
 
 # Builds gtest.a and gtest_main.a.
 
@@ -75,6 +75,12 @@ randodo.o : $(USER_DIR)/randodo.cpp $(USER_DIR)/randodo.h $(GTEST_HEADERS)
 randodo_unittest.o : $(USER_DIR)/randodo_unittest.cpp \
                      $(USER_DIR)/randodo.h $(GTEST_HEADERS)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $(USER_DIR)/randodo_unittest.cpp
+
+main.o: $(USER_DIR)/main.cpp
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $^
+
+randodo: randodo.o main.o
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ -o $@
 
 randodo_unittest : randodo.o randodo_unittest.o gtest_main.a
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ -o $@ -lpthread

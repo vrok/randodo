@@ -24,8 +24,9 @@ public:
         : _file(fileName) {}
     
     bool readLine(std::string &where) {
-        if (!_file.is_open() || !_file.good())
+        if (!_file.is_open() || !_file.good()) {
             return false;
+        }
         std::getline(_file, where);
         return true;
     }
@@ -155,12 +156,10 @@ public:
 
 class PlainRandomNumberGenerator
 {
-private:
-    int _current = 0;
 public:
     int get()
     {
-        return _current++;
+        return rand();
     }
 };
 
@@ -190,7 +189,6 @@ public:
             lineNum++;
             std::string errMsg;
             if (! parseLine(line, errMsg)) {
-                std::cerr << lineNum << ": " << errMsg << std::endl;
                 return false;
             }
         }
@@ -343,11 +341,18 @@ public:
         return regexParser.parseRegex(regex);
     }
 
+    typedef std::map<std::string, std::unique_ptr<Generator>> MapOfGenerators;
+
+    const MapOfGenerators &getMapOfGenerators() const
+    {
+        return _generatorsMap;
+    }
+
 private:
 
     std::vector<std::pair<std::string, std::string>> _lines;
 
-    std::map<std::string, std::unique_ptr<Generator>> _variables;
+    MapOfGenerators _generatorsMap;
 
     bool parseLine(const std::string &line, std::string &errMsg)
     {
@@ -370,6 +375,7 @@ private:
                         case ' ': break;
                         case '#': return true; // comment
                         default:
+                            nameStream << *it;
                             state = READING_NAME;
                     }
                     break;
@@ -409,6 +415,11 @@ private:
             }
         }
 
+        if (state == CLEAR) {
+            // blank line
+            return true;
+        }
+
         if (state < READING_VAL) {
             errMsg = "Finished parsing line in an unexpected state";
             return false;
@@ -419,6 +430,8 @@ private:
         valueStream >> value;
 
         _lines.push_back(std::make_pair(name, value));
+
+        _generatorsMap.insert(std::make_pair(name, parseRegex(value)));
 
         //auto generator = parseRegex(value);
 
