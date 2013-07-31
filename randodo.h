@@ -176,7 +176,8 @@ public:
             gen->optimize();
         }
 
-        auto emptyBegin = std::stable_partition(_generators.begin(), _generators.end(), [](std::unique_ptr<Generator> &gen) {
+        auto emptyBegin = std::stable_partition(_generators.begin(), _generators.end(),
+                                                [](std::unique_ptr<Generator> &gen) {
             return !gen->isEmpty();
         });
 
@@ -191,9 +192,6 @@ private:
     std::vector<std::unique_ptr<Generator>> _generators;
     RandNumGenerator _randNumGenerator;
 public:
-    //AlternativeOfGeneratorsGenerator(std::vector<std::unique_ptr<Generator>> &&generators)
-    //    : _generators(generators) {}
-
     void swapContents(std::vector<std::unique_ptr<Generator>> &generators)
     {
         _generators.swap(generators);
@@ -281,7 +279,8 @@ public:
         void pushGenerator(std::stringstream &stream, Rest... otherArgs)
         {
             if (stream.str().size() > 0) {
-                _generators.back().push_back(std::unique_ptr<GeneratorType>(new GeneratorType(stream.str(), otherArgs...)));
+                _generators.back().push_back(std::unique_ptr<GeneratorType>
+                        (new GeneratorType(stream.str(), otherArgs...)));
                 stream.str("");
             }
         }
@@ -332,14 +331,16 @@ public:
                                     assert(_generators.size() >= 3);
 
                                     {
-                                        auto seriesGen = std::unique_ptr<SeriesOfGeneratorsGenerator>(new SeriesOfGeneratorsGenerator());
+                                        auto seriesGen = std::unique_ptr<SeriesOfGeneratorsGenerator>
+                                            (new SeriesOfGeneratorsGenerator());
                                         seriesGen->swapContents(_generators.back());
                                         _generators.pop_back();
                                         _generators.back().push_back(std::move(seriesGen));
                                     }
 
                                     {
-                                        auto altGen = std::unique_ptr<AlternativeOfGeneratorsGenerator_>(new AlternativeOfGeneratorsGenerator_());
+                                        auto altGen = std::unique_ptr<AlternativeOfGeneratorsGenerator_>
+                                            (new AlternativeOfGeneratorsGenerator_());
                                         altGen->swapContents(_generators.back());
                                         _generators.pop_back();
                                         _generators.back().push_back(std::move(altGen));
@@ -358,7 +359,8 @@ public:
                                     pushGenerator<ConstGenerator>(stream);
 
                                     {
-                                        auto seriesGen = std::unique_ptr<SeriesOfGeneratorsGenerator>(new SeriesOfGeneratorsGenerator());
+                                        auto seriesGen = std::unique_ptr<SeriesOfGeneratorsGenerator>
+                                            (new SeriesOfGeneratorsGenerator());
                                         seriesGen->swapContents(_generators.back());
                                         assert(_generators.size() >= 2);
                                         (_generators.end() - 2)->push_back(std::move(seriesGen));
@@ -372,14 +374,16 @@ public:
                                     assert(_generators.size() == 2);
 
                                     {
-                                        auto seriesGen = std::unique_ptr<SeriesOfGeneratorsGenerator>(new SeriesOfGeneratorsGenerator());
+                                        auto seriesGen = std::unique_ptr<SeriesOfGeneratorsGenerator>
+                                            (new SeriesOfGeneratorsGenerator());
                                         seriesGen->swapContents(_generators.back());
                                         _generators.pop_back();
                                         _generators.back().push_back(std::move(seriesGen));
                                     }
 
                                     {
-                                        auto altGen = std::unique_ptr<AlternativeOfGeneratorsGenerator_>(new AlternativeOfGeneratorsGenerator_());
+                                        auto altGen = std::unique_ptr<AlternativeOfGeneratorsGenerator_>
+                                            (new AlternativeOfGeneratorsGenerator_());
                                         altGen->swapContents(_generators.back());
                                         _generators.back().push_back(std::move(altGen));
                                     }
@@ -411,7 +415,8 @@ public:
                                     auto prevGenerator = std::move(_generators.back().back());
                                     _generators.back().pop_back();
                                     _generators.back().push_back(std::unique_ptr<RepetitionsGenerator_>
-                                            (new RepetitionsGenerator_(repetitions[0], repetitions[1], std::move(prevGenerator))));
+                                            (new RepetitionsGenerator_(repetitions[0], repetitions[1],
+                                                                       std::move(prevGenerator))));
 
                                     restoreState();
                                 }
@@ -432,7 +437,8 @@ public:
                                     restoreState();
                                 case EOL:
                                 
-                                _generators.back().push_back(std::unique_ptr<Generator>(new CharAlternativeGenerator_(stream.str())));
+                                _generators.back().push_back(std::unique_ptr<Generator>
+                                        (new CharAlternativeGenerator_(stream.str())));
                                 stream.str("");
                                 break;
 
