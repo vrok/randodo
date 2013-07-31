@@ -129,3 +129,24 @@ TEST(ConfigFile, TestConstant)
     ASSERT_EQ(0U, configFile.getLines().size());
 }
 
+TEST(ConfigFile, TestVariable)
+{
+    Randodo::ConfigFile<FakeFileReader, FakeRandomNumberGenerator> configFile;
+    FakeFileReader fakeFileReader;
+    fakeFileReader.addLine("gnome=(dwarf|lilliput)");
+    fakeFileReader.addLine("hobbit=$gnome [goblin]");
+    ASSERT_TRUE(configFile.parse(fakeFileReader));
+
+    auto &mapOfGenerators = configFile.getMapOfGenerators();
+    auto iter = mapOfGenerators.find("hobbit");
+
+    ASSERT_NE(mapOfGenerators.end(), iter);
+
+    std::stringstream str1, str2;
+
+    iter->second->generate(str1);
+    iter->second->generate(str2);
+
+    ASSERT_EQ("dwarf g", str1.str());
+    ASSERT_EQ("lilliput o", str2.str());
+}
