@@ -264,15 +264,14 @@ public:
     class RegexParser {
 
         enum State {
-            CLEAR,
+            DEFAULT,
             CHAR_ALTERNATIVE, // [abc]
             VARIABLE_NAME, // $foo
             REPETITIONS_SPECS, // {1,10} or {10}, or {,10}, etc.
-            //SUB_REGEX_ALTERNATIVE, // (abc|def|geh)
         };
 
         std::stack<State> _stateStack;
-        State _state = CLEAR;
+        State _state = DEFAULT;
         std::vector<std::vector<std::unique_ptr<Generator>>> _generators;
 
         template<typename GeneratorType, typename... Rest>
@@ -314,7 +313,7 @@ public:
                     reapply = false;
 
                     switch (_state) {
-                        case CLEAR:
+                        case DEFAULT:
                             switch (character) {
                                 case '$':
                                     pushGenerator<ConstGenerator>(stream);
@@ -322,7 +321,7 @@ public:
                                     break;
                                 case '(':
                                     pushGenerator<ConstGenerator>(stream);
-                                    setState(CLEAR);
+                                    setState(DEFAULT);
                                     _generators.push_back(std::vector<std::unique_ptr<Generator>>());
                                     _generators.push_back(std::vector<std::unique_ptr<Generator>>());
                                     break;
@@ -476,26 +475,26 @@ private:
 
     static bool isAlpha(int c)
     {
-        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || (c >= '0' && c <= '9');
+        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || isDigit(c);
     }
 
     bool parseLine(const std::string &line, std::string &errMsg)
     {
         enum State {
-            CLEAR,
+            DEFAULT,
             READING_NAME,
             WHITESPACE_AFTER_NAME,
             WHITESPACE_BEFORE_VAL,
             READING_VAL,
         };
 
-        State state = CLEAR;
+        State state = DEFAULT;
 
         std::stringstream nameStream, valueStream;
 
         for (std::string::const_iterator it = line.begin(); it != line.end(); ++it) {
             switch (state) {
-                case CLEAR:
+                case DEFAULT:
                     switch (*it) {
                         case ' ': break;
                         case '#': return true; // comment
@@ -540,7 +539,7 @@ private:
             }
         }
 
-        if (state == CLEAR) {
+        if (state == DEFAULT) {
             // blank line
             return true;
         }
@@ -551,12 +550,8 @@ private:
         }
 
         std::string &&name = nameStream.str(), &&value = valueStream.str();
-
         _lines.push_back(std::make_pair(name, value));
-
         _generatorsMap.insert(std::make_pair(name, parseRegex(value)));
-
-        //auto generator = parseRegex(value);
 
         return true;
     }
