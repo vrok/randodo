@@ -102,6 +102,51 @@ TEST(ConfigFile, TestRegexEmbeddedConstAlternative)
 }
 
 
+TEST(ConfigFile, TestRegexRepetitionsVaried)
+{
+    Randodo::ConfigFile<FakeFileReader, FakeRandomNumberGenerator> configFile;
+    std::string regex = "abc{3,5}";
+    std::unique_ptr<Randodo::Generator> gen = configFile.parseRegex(regex);
+    std::stringstream str1, str2;
+
+    gen->generate(str1);
+    gen->generate(str2);
+
+    ASSERT_EQ("abcabcabc", str1.str());
+    ASSERT_EQ("abcabcabcabc", str2.str());
+}
+
+
+TEST(ConfigFile, TestRegexRepetitionsConst)
+{
+    Randodo::ConfigFile<FakeFileReader, FakeRandomNumberGenerator> configFile;
+    std::string regex = "abc{3}";
+    std::unique_ptr<Randodo::Generator> gen = configFile.parseRegex(regex);
+    std::stringstream str1, str2;
+
+    gen->generate(str1);
+    gen->generate(str2);
+
+    ASSERT_EQ("abcabcabc", str1.str());
+    ASSERT_EQ("abcabcabc", str2.str());
+}
+
+
+TEST(ConfigFile, TestRegexRepetitionsFrom0)
+{
+    Randodo::ConfigFile<FakeFileReader, FakeRandomNumberGenerator> configFile;
+    std::string regex = "abc{,3}";
+    std::unique_ptr<Randodo::Generator> gen = configFile.parseRegex(regex);
+    std::stringstream str1, str2;
+
+    gen->generate(str1);
+    gen->generate(str2);
+
+    ASSERT_EQ("", str1.str());
+    ASSERT_EQ("abc", str2.str());
+}
+
+
 TEST(ConfigFile, TestRegexAlternative)
 {
     Randodo::ConfigFile<FakeFileReader, FakeRandomNumberGenerator> configFile;

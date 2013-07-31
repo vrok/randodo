@@ -118,6 +118,36 @@ public:
     }
 };
 
+template<typename RandNumGenerator>
+class RepetitionsGenerator : public Generator
+{
+private:
+    const int _from, _to;
+    std::unique_ptr<Generator> _generator;
+    RandNumGenerator _randNumGenerator;
+public:
+    RepetitionsGenerator(int from, int to, std::unique_ptr<Generator> &&generator)
+        : _from(from), _to(to), _generator(std::move(generator)) {}
+    
+    void generate(std::stringstream &output)
+    {
+        int howMany = _from + (_randNumGenerator.get() % (_to - _from + 1));
+        for (int i = 0; i < howMany; i++) {
+            _generator->generate(output);
+        }
+    }
+
+    bool isEmpty()
+    {
+        return _from == 0 && _to == 0;
+    }
+
+    void optimize()
+    {
+        // TODO
+    }
+};
+
 class SeriesOfGeneratorsGenerator : public Generator
 {
 private:
@@ -204,6 +234,7 @@ public:
 
     typedef CharAlternativeGenerator<RandNumGenerator> CharAlternativeGenerator_;
     typedef AlternativeOfGeneratorsGenerator<RandNumGenerator> AlternativeOfGeneratorsGenerator_;
+    typedef RepetitionsGenerator<RandNumGenerator> RepetitionsGenerator_;
 
     bool parse(std::string fileName)
     {
@@ -238,6 +269,7 @@ public:
             CLEAR,
             CHAR_ALTERNATIVE, // [abc]
             VARIABLE_NAME, // $foo
+            REPETITIONS_SPECS, // {1,10} or {10}, or {,10}, etc.
             //SUB_REGEX_ALTERNATIVE, // (abc|def|geh)
         };
 
@@ -274,7 +306,9 @@ public:
         {
             std::stringstream stream;
 
-            std::function<void(int)> processChar = [this, &stream, &mapOfGenerators](int character)
+            std::vector<int> repetitions;
+
+            std::function<void(int)> processChar = [&, this](int character)
             {
                 bool reapply = false;
                 do {
@@ -311,6 +345,10 @@ public:
                                         _generators.back().push_back(std::move(altGen));
                                     }
                                     restoreState();
+                                    break;
+                                case '{':
+                                    pushGenerator<ConstGenerator>(stream);
+                                    setState(REPETITIONS_SPECS);
                                     break;
                                 case '[':
                                     pushGenerator<ConstGenerator>(stream);
@@ -350,6 +388,33 @@ public:
 
                                 default:
                                     stream << static_cast<char>(character);
+                            }
+                            break;
+                        case REPETITIONS_SPECS:
+                            if (isDigit(character)) {
+                                stream << static_cast<char>(character);
+                            } else {
+                                assert(character == ',' || character == '}');
+
+                                int val = atoi(stream.str().c_str());
+                                stream.str("");
+                                repetitions.push_back(val);
+
+                                if (character == '}') {
+
+                                    if (repetitions.size() == 1) {
+                                        repetitions.push_back(repetitions.front());
+                                    }
+
+                                    assert(_generators.back().size() > 0);
+
+                                    auto prevGenerator = std::move(_generators.back().back());
+                                    _generators.back().pop_back();
+                                    _generators.back().push_back(std::unique_ptr<RepetitionsGenerator_>
+                                            (new RepetitionsGenerator_(repetitions[0], repetitions[1], std::move(prevGenerator))));
+
+                                    restoreState();
+                                }
                             }
                             break;
                         case VARIABLE_NAME:
@@ -401,6 +466,11 @@ private:
     std::vector<std::pair<std::string, std::string>> _lines;
 
     MapOfGenerators _generatorsMap;
+
+    static bool isDigit(int c)
+    {
+        return c >= '0' && c <= '9';
+    }
 
     static bool isAlpha(int c)
     {
