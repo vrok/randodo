@@ -132,6 +132,20 @@ TEST(ConfigFile, TestRegexRepetitionsVaried)
     ASSERT_EQ("abcabcabcabc", str2.str());
 }
 
+TEST(ConfigFile, TestRegexBackslash)
+{
+    Randodo::ConfigFile<FakeFileReader, FakeRandomNumberGenerator> configFile;
+    std::string regex = "a\\{b\\}[\\[\\]]";
+    std::unique_ptr<Randodo::Generator> gen = configFile.parseRegex(regex);
+    std::stringstream str1, str2;
+
+    gen->generate(str1);
+    gen->generate(str2);
+
+    ASSERT_EQ("a{b}[", str1.str());
+    ASSERT_EQ("a{b}]", str2.str());
+}
+
 
 TEST(ConfigFile, TestRegexRepetitionsConst)
 {

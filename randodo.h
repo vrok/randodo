@@ -268,6 +268,7 @@ public:
             CHAR_ALTERNATIVE, // [abc]
             VARIABLE_NAME, // $foo
             REPETITIONS_SPECS, // {1,10} or {10}, or {,10}, etc.
+            BACKSLASH, // for special characters
         };
 
         std::stack<State> _stateStack;
@@ -317,6 +318,9 @@ public:
                     switch (_state) {
                         case DEFAULT:
                             switch (character) {
+                                case '\\':
+                                    setState(BACKSLASH);
+                                    break;
                                 case '$':
                                     pushGenerator<ConstGenerator>(stream);
                                     setState(VARIABLE_NAME);
@@ -434,6 +438,9 @@ public:
                             break;
                         case CHAR_ALTERNATIVE:
                             switch (character) {
+                                case '\\':
+                                    setState(BACKSLASH);
+                                    break;
                                 case '-':
                                     wasDashInCharAlternative = true;
                                     break;
@@ -457,6 +464,11 @@ public:
                                         stream << static_cast<char>(character);    
                                     }
                             }
+                            break;
+                        case BACKSLASH:
+                            stream << static_cast<char>(character);
+                            restoreState();
+                            break;
                     }
                 } while (reapply);
             };
