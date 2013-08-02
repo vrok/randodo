@@ -306,6 +306,8 @@ public:
 
             std::vector<int> repetitions;
 
+            bool wasDashInCharAlternative = false;
+
             std::function<void(int)> processChar = [&, this](int character)
             {
                 bool reapply = false;
@@ -432,13 +434,28 @@ public:
                             break;
                         case CHAR_ALTERNATIVE:
                             switch (character) {
+                                case '-':
+                                    wasDashInCharAlternative = true;
+                                    break;
                                 case ']':
                                     restoreState();
                                 case EOL:
                                     pushGenerator<CharAlternativeGenerator_>(stream);
                                     break;
                                 default:
-                                    stream << static_cast<char>(character);    
+                                    if (wasDashInCharAlternative) {
+                                        wasDashInCharAlternative = false;
+                                        char from = stream.str().back();
+                                        if (from >= character) {
+                                            // TODO: maybe it'd be better to throw an error than silently ignore
+                                            break;
+                                        }
+                                        for (char ch = from + 1; ch <= character; ch++) {
+                                            stream << static_cast<char>(ch);
+                                        }
+                                    } else {
+                                        stream << static_cast<char>(character);    
+                                    }
                             }
                     }
                 } while (reapply);

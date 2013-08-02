@@ -71,6 +71,22 @@ TEST(ConfigFile, TestRegexTwoCharAlternatives)
     ASSERT_EQ("abceh", str2.str());
 }
 
+TEST(ConfigFile, TestRegexTwoCharAlternativeRange)
+{
+    Randodo::ConfigFile<FakeFileReader, FakeRandomNumberGenerator> configFile;
+    std::string regex = "abc[a-c][c-d]";
+    std::unique_ptr<Randodo::Generator> gen = configFile.parseRegex(regex);
+    std::stringstream str1, str2, str3;
+
+    gen->generate(str1);
+    gen->generate(str2);
+    gen->generate(str3);
+
+    ASSERT_EQ("abcac", str1.str());
+    ASSERT_EQ("abcbd", str2.str());
+    ASSERT_EQ("abccc", str3.str());
+}
+
 
 TEST(ConfigFile, TestRegexOneConstAlternative)
 {
