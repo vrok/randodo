@@ -23,7 +23,7 @@ how_much=(| very{1,5} much)
 result=$male $verb $female$how_much. By the way, here are 5 random letters: [a-zA-Z]{5}.
 ```
 
-In the file visible above, each line defines one generator (and every such generator has a name). Generators can embed each other to create more powerful generators. Now we can choose one of the generators in the file to get a few strings - let's say that we'd like to have 3 strings from the last generator in the file, called "result". This is how it can be done:
+In the file visible above, each line defines a generator (and every such generator has a name). Generators can embed each other to create more powerful generators. Now we can choose one of them to get a few strings - let's say that we'd like to have 3 strings from the last generator in the file, called "result". This is how it can be done:
 
 ```
 vrok@laptok:~/randodo$ ./randodo sample.rdd result 3
