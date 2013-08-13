@@ -300,157 +300,179 @@ public:
             _stateStack.pop();
         }
 
+        void processCharInDefaultState(int character)
+        {
+            switch (character) {
+                case '\\':
+                    setState(BACKSLASH);
+                    break;
+                case '$':
+                    pushGenerator<ConstGenerator>(_stream);
+                    setState(VARIABLE_NAME);
+                    break;
+                case '(':
+                    pushGenerator<ConstGenerator>(_stream);
+                    setState(DEFAULT);
+                    _generators.push_back(std::vector<std::unique_ptr<Generator>>());
+                    _generators.push_back(std::vector<std::unique_ptr<Generator>>());
+                    break;
+                case ')':
+                    pushGenerator<ConstGenerator>(_stream);
+                    assert(_generators.size() >= 3);
+
+                    {
+                        auto seriesGen = std::unique_ptr<SeriesOfGeneratorsGenerator>
+                            (new SeriesOfGeneratorsGenerator());
+                        seriesGen->swapContents(_generators.back());
+                        _generators.pop_back();
+                        _generators.back().push_back(std::move(seriesGen));
+                    }
+
+                    {
+                        auto altGen = std::unique_ptr<AlternativeOfGeneratorsGenerator_>
+                            (new AlternativeOfGeneratorsGenerator_());
+                        altGen->swapContents(_generators.back());
+                        _generators.pop_back();
+                        _generators.back().push_back(std::move(altGen));
+                    }
+                    restoreState();
+                    break;
+                case '{':
+                    pushGenerator<ConstGenerator>(_stream);
+                    setState(REPETITIONS_SPECS);
+                    break;
+                case '[':
+                    pushGenerator<ConstGenerator>(_stream);
+                    setState(CHAR_ALTERNATIVE);
+                    break;
+                case '|':
+                    pushGenerator<ConstGenerator>(_stream);
+
+                    {
+                        auto seriesGen = std::unique_ptr<SeriesOfGeneratorsGenerator>
+                            (new SeriesOfGeneratorsGenerator());
+                        seriesGen->swapContents(_generators.back());
+                        assert(_generators.size() >= 2);
+                        (_generators.end() - 2)->push_back(std::move(seriesGen));
+                    }
+
+                    break;
+
+                case EOL:
+                    pushGenerator<ConstGenerator>(_stream);
+                    
+                    assert(_generators.size() == 2);
+
+                    {
+                        auto seriesGen = std::unique_ptr<SeriesOfGeneratorsGenerator>
+                            (new SeriesOfGeneratorsGenerator());
+                        seriesGen->swapContents(_generators.back());
+                        _generators.pop_back();
+                        _generators.back().push_back(std::move(seriesGen));
+                    }
+
+                    {
+                        auto altGen = std::unique_ptr<AlternativeOfGeneratorsGenerator_>
+                            (new AlternativeOfGeneratorsGenerator_());
+                        altGen->swapContents(_generators.back());
+                        _generators.back().push_back(std::move(altGen));
+                    }
+
+                    break;
+
+                default:
+                    _stream << static_cast<char>(character);
+            }
+        }
+
+        void processCharInRepetitionsSpecsState(int character)
+        {
+            if (isDigit(character)) {
+                _stream << static_cast<char>(character);
+            } else {
+                assert(character == ',' || character == '}');
+
+                int val = atoi(_stream.str().c_str());
+                _stream.str("");
+                _repetitions.push_back(val);
+
+                if (character == '}') {
+
+                    if (_repetitions.size() == 1) {
+                        _repetitions.push_back(_repetitions.front());
+                    }
+
+                    assert(_generators.back().size() > 0);
+
+                    auto prevGenerator = std::move(_generators.back().back());
+                    _generators.back().pop_back();
+                    _generators.back().push_back(std::unique_ptr<RepetitionsGenerator_>
+                            (new RepetitionsGenerator_(_repetitions[0], _repetitions[1],
+                                                       std::move(prevGenerator))));
+
+                    restoreState();
+                }
+            }
+        }
+
+        void processCharInCharAlternativeState(int character)
+        {
+            switch (character) {
+                case '\\':
+                    setState(BACKSLASH);
+                    break;
+                case '-':
+                    _wasDashInCharAlternative = true;
+                    break;
+                case ']':
+                    restoreState();
+                case EOL:
+                    pushGenerator<CharAlternativeGenerator_>(_stream);
+                    break;
+                default:
+                    if (_wasDashInCharAlternative) {
+                        _wasDashInCharAlternative = false;
+                        char from = _stream.str().back();
+                        if (from >= character) {
+                            // TODO: maybe it'd be better to throw an error than silently ignore
+                            break;
+                        }
+                        for (char ch = from + 1; ch <= character; ch++) {
+                            _stream << static_cast<char>(ch);
+                        }
+                    } else {
+                        _stream << static_cast<char>(character);    
+                    }
+            }
+        }
+
+        bool processCharInVariableNameStateAndTellIfShouldReturn(int character, const MapOfGenerators &mapOfGenerators)
+        {
+            if (isAlpha(character)) {
+                _stream << static_cast<char>(character);
+            } else {
+                pushGenerator<VariableGenerator>(_stream, std::cref(mapOfGenerators));
+                restoreState();
+                return true;
+            }
+            return false;
+        }
+
         bool processCharAndTellIfShouldRerun(int character, const MapOfGenerators &mapOfGenerators)
         {
             switch (_state) {
                 case DEFAULT:
-                    switch (character) {
-                        case '\\':
-                            setState(BACKSLASH);
-                            break;
-                        case '$':
-                            pushGenerator<ConstGenerator>(_stream);
-                            setState(VARIABLE_NAME);
-                            break;
-                        case '(':
-                            pushGenerator<ConstGenerator>(_stream);
-                            setState(DEFAULT);
-                            _generators.push_back(std::vector<std::unique_ptr<Generator>>());
-                            _generators.push_back(std::vector<std::unique_ptr<Generator>>());
-                            break;
-                        case ')':
-                            pushGenerator<ConstGenerator>(_stream);
-                            assert(_generators.size() >= 3);
-
-                            {
-                                auto seriesGen = std::unique_ptr<SeriesOfGeneratorsGenerator>
-                                    (new SeriesOfGeneratorsGenerator());
-                                seriesGen->swapContents(_generators.back());
-                                _generators.pop_back();
-                                _generators.back().push_back(std::move(seriesGen));
-                            }
-
-                            {
-                                auto altGen = std::unique_ptr<AlternativeOfGeneratorsGenerator_>
-                                    (new AlternativeOfGeneratorsGenerator_());
-                                altGen->swapContents(_generators.back());
-                                _generators.pop_back();
-                                _generators.back().push_back(std::move(altGen));
-                            }
-                            restoreState();
-                            break;
-                        case '{':
-                            pushGenerator<ConstGenerator>(_stream);
-                            setState(REPETITIONS_SPECS);
-                            break;
-                        case '[':
-                            pushGenerator<ConstGenerator>(_stream);
-                            setState(CHAR_ALTERNATIVE);
-                            break;
-                        case '|':
-                            pushGenerator<ConstGenerator>(_stream);
-
-                            {
-                                auto seriesGen = std::unique_ptr<SeriesOfGeneratorsGenerator>
-                                    (new SeriesOfGeneratorsGenerator());
-                                seriesGen->swapContents(_generators.back());
-                                assert(_generators.size() >= 2);
-                                (_generators.end() - 2)->push_back(std::move(seriesGen));
-                            }
-
-                            break;
-
-                        case EOL:
-                            pushGenerator<ConstGenerator>(_stream);
-                            
-                            assert(_generators.size() == 2);
-
-                            {
-                                auto seriesGen = std::unique_ptr<SeriesOfGeneratorsGenerator>
-                                    (new SeriesOfGeneratorsGenerator());
-                                seriesGen->swapContents(_generators.back());
-                                _generators.pop_back();
-                                _generators.back().push_back(std::move(seriesGen));
-                            }
-
-                            {
-                                auto altGen = std::unique_ptr<AlternativeOfGeneratorsGenerator_>
-                                    (new AlternativeOfGeneratorsGenerator_());
-                                altGen->swapContents(_generators.back());
-                                _generators.back().push_back(std::move(altGen));
-                            }
-
-                            break;
-
-                        default:
-                            _stream << static_cast<char>(character);
-                    }
+                    processCharInDefaultState(character);
                     break;
                 case REPETITIONS_SPECS:
-                    if (isDigit(character)) {
-                        _stream << static_cast<char>(character);
-                    } else {
-                        assert(character == ',' || character == '}');
-
-                        int val = atoi(_stream.str().c_str());
-                        _stream.str("");
-                        _repetitions.push_back(val);
-
-                        if (character == '}') {
-
-                            if (_repetitions.size() == 1) {
-                                _repetitions.push_back(_repetitions.front());
-                            }
-
-                            assert(_generators.back().size() > 0);
-
-                            auto prevGenerator = std::move(_generators.back().back());
-                            _generators.back().pop_back();
-                            _generators.back().push_back(std::unique_ptr<RepetitionsGenerator_>
-                                    (new RepetitionsGenerator_(_repetitions[0], _repetitions[1],
-                                                               std::move(prevGenerator))));
-
-                            restoreState();
-                        }
-                    }
+                    processCharInRepetitionsSpecsState(character);
                     break;
                 case VARIABLE_NAME:
-                    if (isAlpha(character)) {
-                        _stream << static_cast<char>(character);
-                    } else {
-                        pushGenerator<VariableGenerator>(_stream, std::cref(mapOfGenerators));
-                        restoreState();
+                    if (processCharInVariableNameStateAndTellIfShouldReturn(character, mapOfGenerators))
                         return true;
-                    }
                     break;
                 case CHAR_ALTERNATIVE:
-                    switch (character) {
-                        case '\\':
-                            setState(BACKSLASH);
-                            break;
-                        case '-':
-                            _wasDashInCharAlternative = true;
-                            break;
-                        case ']':
-                            restoreState();
-                        case EOL:
-                            pushGenerator<CharAlternativeGenerator_>(_stream);
-                            break;
-                        default:
-                            if (_wasDashInCharAlternative) {
-                                _wasDashInCharAlternative = false;
-                                char from = _stream.str().back();
-                                if (from >= character) {
-                                    // TODO: maybe it'd be better to throw an error than silently ignore
-                                    break;
-                                }
-                                for (char ch = from + 1; ch <= character; ch++) {
-                                    _stream << static_cast<char>(ch);
-                                }
-                            } else {
-                                _stream << static_cast<char>(character);    
-                            }
-                    }
+                    processCharInCharAlternativeState(character);
                     break;
                 case BACKSLASH:
                     _stream << static_cast<char>(character);
