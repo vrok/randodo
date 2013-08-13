@@ -12,6 +12,22 @@ Randodo has been started as a tool useful for testing other stuff, so I would gu
 
 ## Examples
 
+Here's a simple example of how you can use Randodo as a command-line utility. At first, you need to create a file with a specification for Randodo:
 ```
-Sorry, not yet!
+vrok@laptok:~/randodo$ cat sample.rdd 
+male=(John|Paul|Martin|Hubert|Bozydar)
+female=(Ann|Sharon|Liza|Janina)
+names=($male|$female)
+verb=(loves|hates|likes|ignores)
+how_much=(| very{1,5} much)
+result=$male $verb $female$how_much. By the way, here are 5 random letters: [a-zA-Z]{5}.
+```
+
+In the file visible above, each line defines one generator (and every such generator has a name). Generators can embed each other to create more powerful generators. Now we can choose one of the generators in the file to get a few strings - let's say that we'd like to have 3 strings from the last generator in the file, called "result". This is how it can be done:
+
+```
+vrok@laptok:~/randodo$ ./randodo sample.rdd result 3
+Bozydar likes Janina very much. By the way, here are 5 random letters: sEBOM.
+John hates Ann very very much. By the way, here are 5 random letters: uLQMt.
+Bozydar likes Sharon. By the way, here are 5 random letters: wDgMR.
 ```
