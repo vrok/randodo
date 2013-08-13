@@ -260,6 +260,33 @@ public:
         return _lines;
     }
 
+    std::unique_ptr<Generator> parseRegex(const std::string &regex)
+    {
+        RegexParser regexParser;
+        return regexParser.parseRegex(regex, _generatorsMap);
+    }
+
+    const MapOfGenerators &getMapOfGenerators() const
+    {
+        return _generatorsMap;
+    }
+
+private:
+
+    std::vector<std::pair<std::string, std::string>> _lines;
+
+    MapOfGenerators _generatorsMap;
+
+    static bool isDigit(int c)
+    {
+        return c >= '0' && c <= '9';
+    }
+
+    static bool isAlpha(int c)
+    {
+        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || isDigit(c);
+    }
+
     class RegexParser {
 
         enum State {
@@ -500,33 +527,6 @@ public:
             return std::move(_generators.back().back());
         }
     };
-
-    std::unique_ptr<Generator> parseRegex(const std::string &regex)
-    {
-        RegexParser regexParser;
-        return regexParser.parseRegex(regex, _generatorsMap);
-    }
-
-    const MapOfGenerators &getMapOfGenerators() const
-    {
-        return _generatorsMap;
-    }
-
-private:
-
-    std::vector<std::pair<std::string, std::string>> _lines;
-
-    MapOfGenerators _generatorsMap;
-
-    static bool isDigit(int c)
-    {
-        return c >= '0' && c <= '9';
-    }
-
-    static bool isAlpha(int c)
-    {
-        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || isDigit(c);
-    }
 
     bool parseLine(const std::string &line, std::string &errMsg)
     {
