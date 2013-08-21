@@ -511,27 +511,17 @@ template<typename FileReader = PlainFileReader,
 class ConfigFile
 {
 public:
-    bool parse(std::string fileName)
+    ConfigFile(std::string fileName)
     {
         FileReader file(fileName);
-        return parse(file);
+        parse(file);
     }
 
-    bool parse(FileReader &file)
+    ConfigFile(FileReader &file)
     {
-        int lineNum = 0;
-
-        std::string line;
-        while (file.readLine(line)) {
-            lineNum++;
-            std::string errMsg;
-            if (! parseLine(line, errMsg)) {
-                return false;
-            }
-        }
-        return true;
+        parse(file);
     }
-    
+
     const std::vector<std::pair<std::string, std::string>> & getLines()
     {
         return _lines;
@@ -548,6 +538,21 @@ private:
 
     MapOfGenerators _generatorsMap;
 
+    bool parse(FileReader &file)
+    {
+        int lineNum = 0;
+
+        std::string line;
+        while (file.readLine(line)) {
+            lineNum++;
+            std::string errMsg;
+            if (! parseLine(line, errMsg)) {
+                return false;
+            }
+        }
+        return true;
+    }
+    
     bool parseLine(const std::string &line, std::string &errMsg)
     {
         enum State {

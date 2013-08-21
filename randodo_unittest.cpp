@@ -58,7 +58,6 @@ TEST(ConfigFile, TestRegexConst)
 
 TEST(ConfigFile, TestRegexTwoCharAlternatives)
 {
-    Randodo::ConfigFile<FakeFileReader, FakeRandomNumberGenerator> configFile;
     std::string regex = "abc[def][ghi]";
     std::unique_ptr<Randodo::Generator> gen = Randodo::RegexParser<FakeFileReader, FakeRandomNumberGenerator>::parseExpression(regex);
     std::stringstream str1, str2;
@@ -72,7 +71,6 @@ TEST(ConfigFile, TestRegexTwoCharAlternatives)
 
 TEST(ConfigFile, TestRegexTwoCharAlternativeRange)
 {
-    Randodo::ConfigFile<FakeFileReader, FakeRandomNumberGenerator> configFile;
     std::string regex = "abc[a-c][c-d]";
     std::unique_ptr<Randodo::Generator> gen = Randodo::RegexParser<FakeFileReader, FakeRandomNumberGenerator>::parseExpression(regex);
     std::stringstream str1, str2, str3;
@@ -89,7 +87,6 @@ TEST(ConfigFile, TestRegexTwoCharAlternativeRange)
 
 TEST(ConfigFile, TestRegexOneConstAlternative)
 {
-    Randodo::ConfigFile<FakeFileReader, FakeRandomNumberGenerator> configFile;
     std::string regex = "abc|def";
     std::unique_ptr<Randodo::Generator> gen = Randodo::RegexParser<FakeFileReader, FakeRandomNumberGenerator>::parseExpression(regex);
     std::stringstream str1, str2;
@@ -104,7 +101,6 @@ TEST(ConfigFile, TestRegexOneConstAlternative)
 
 TEST(ConfigFile, TestRegexEmbeddedConstAlternative)
 {
-    Randodo::ConfigFile<FakeFileReader, FakeRandomNumberGenerator> configFile;
     std::string regex = "abc(def|ghi)jkl";
     std::unique_ptr<Randodo::Generator> gen = Randodo::RegexParser<FakeFileReader, FakeRandomNumberGenerator>::parseExpression(regex);
     std::stringstream str1, str2;
@@ -119,7 +115,6 @@ TEST(ConfigFile, TestRegexEmbeddedConstAlternative)
 
 TEST(ConfigFile, TestRegexRepetitionsVaried)
 {
-    Randodo::ConfigFile<FakeFileReader, FakeRandomNumberGenerator> configFile;
     std::string regex = "abc{3,5}";
     std::unique_ptr<Randodo::Generator> gen = Randodo::RegexParser<FakeFileReader, FakeRandomNumberGenerator>::parseExpression(regex);
     std::stringstream str1, str2;
@@ -133,7 +128,6 @@ TEST(ConfigFile, TestRegexRepetitionsVaried)
 
 TEST(ConfigFile, TestRegexBackslash)
 {
-    Randodo::ConfigFile<FakeFileReader, FakeRandomNumberGenerator> configFile;
     std::string regex = "a\\{b\\}[\\[\\]]";
     std::unique_ptr<Randodo::Generator> gen = Randodo::RegexParser<FakeFileReader, FakeRandomNumberGenerator>::parseExpression(regex);
     std::stringstream str1, str2;
@@ -148,7 +142,6 @@ TEST(ConfigFile, TestRegexBackslash)
 
 TEST(ConfigFile, TestRegexRepetitionsConst)
 {
-    Randodo::ConfigFile<FakeFileReader, FakeRandomNumberGenerator> configFile;
     std::string regex = "abc{3}";
     std::unique_ptr<Randodo::Generator> gen = Randodo::RegexParser<FakeFileReader, FakeRandomNumberGenerator>::parseExpression(regex);
     std::stringstream str1, str2;
@@ -163,7 +156,6 @@ TEST(ConfigFile, TestRegexRepetitionsConst)
 
 TEST(ConfigFile, TestRegexRepetitionsFrom0)
 {
-    Randodo::ConfigFile<FakeFileReader, FakeRandomNumberGenerator> configFile;
     std::string regex = "abc{,3}";
     std::unique_ptr<Randodo::Generator> gen = Randodo::RegexParser<FakeFileReader, FakeRandomNumberGenerator>::parseExpression(regex);
     std::stringstream str1, str2;
@@ -178,7 +170,6 @@ TEST(ConfigFile, TestRegexRepetitionsFrom0)
 
 TEST(ConfigFile, TestRegexAlternative)
 {
-    Randodo::ConfigFile<FakeFileReader, FakeRandomNumberGenerator> configFile;
     std::string regex = "abc(def|[ghi])jkl";
     std::unique_ptr<Randodo::Generator> gen = Randodo::RegexParser<FakeFileReader, FakeRandomNumberGenerator>::parseExpression(regex);
     std::stringstream str1, str2, str3, str4;
@@ -196,20 +187,20 @@ TEST(ConfigFile, TestRegexAlternative)
 
 TEST(ConfigFile, TestConstant)
 {
-    Randodo::ConfigFile<FakeFileReader> configFile;
     FakeFileReader fakeFileReader;
     fakeFileReader.addLine("# some comment");
-    ASSERT_TRUE(configFile.parse(fakeFileReader));
+    Randodo::ConfigFile<FakeFileReader> configFile(fakeFileReader);
+    //ASSERT_TRUE(configFile.parse(fakeFileReader));
     ASSERT_EQ(0U, configFile.getLines().size());
 }
 
 TEST(ConfigFile, TestVariable)
 {
-    Randodo::ConfigFile<FakeFileReader, FakeRandomNumberGenerator> configFile;
     FakeFileReader fakeFileReader;
     fakeFileReader.addLine("gnome=(dwarf|lilliput)");
     fakeFileReader.addLine("hobbit=$gnome [goblin]");
-    ASSERT_TRUE(configFile.parse(fakeFileReader));
+    Randodo::ConfigFile<FakeFileReader, FakeRandomNumberGenerator> configFile(fakeFileReader);
+    //ASSERT_TRUE(configFile.parse(fakeFileReader));
 
     auto &mapOfGenerators = configFile.getMapOfGenerators();
     auto iter = mapOfGenerators.find("hobbit");

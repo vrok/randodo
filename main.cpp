@@ -1,9 +1,6 @@
 
 #include "randodo.h"
 
-#include <cstdlib>
-#include <ctime> 
-
 int main(int argc, char **argv)
 {
     if (argc < 3) {
@@ -20,8 +17,7 @@ int main(int argc, char **argv)
         howMany = atoi(argv[3]);
     }
 
-    Randodo::ConfigFile<> configFile;
-    configFile.parse(fileName);
+    Randodo::ConfigFile<> configFile(fileName);
 
     auto &mapOfGenerators = configFile.getMapOfGenerators();
     auto iter = mapOfGenerators.find(generatorName);
