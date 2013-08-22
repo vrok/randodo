@@ -44,7 +44,7 @@ Firstly, we should solve the standard logistic problems - compiling, linking, et
 #include "randodo.h"
 ```
 
-Our application will be able to accept 3 parameters: name of the specification file, name of the generator in the file, and the number of random strings which are to be generated (this will be set by default to 1).
+Our application will be able to accept 3 parameters: name of the specification file, name of the generator in the file, and number of random strings which are to be generated (this will be set by default to 1).
 
 ```c++
 int main(int argc, char **argv)
@@ -69,7 +69,7 @@ int main(int argc, char **argv)
 }
 ```
 
-This was all very simple. Now it's time to use Randodo. Randodo's basic class (or rather a class template) is `ConfigFile`, which represents a Randodo specification file. It parses the file during construction, and after that you can access it's generators (placed in a std::map of unique_ptrs, where names are keys). Here's the finished program:
+This was all very simple. Now it's time to use Randodo. Randodo's basic class (or rather a class template) is `ConfigFile`, which represents a Randodo specification file. It parses the file during construction, and after that you can access its generators (placed in a std::map of unique_ptrs, where names are keys). Here's the finished program:
 
 ```c++
 #include "randodo.h"
